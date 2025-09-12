@@ -166,7 +166,7 @@ function loadAllData() {
     }
 }
 
-// 사진 미리보기 설정
+// 사진 미리보기 설정 - 수정됨
 function setupPhotoPreview() {
     const photoInputs = [
         { input: 'photo_osulloc', preview: 'preview_osulloc' },
@@ -190,15 +190,15 @@ function setupPhotoPreview() {
                         previewEl.src = e.target.result;
                         previewEl.style.display = 'block';
                         
-                        // Base64 이미지 저장
-                        localStorage.setItem(`photo_${input}`, e.target.result);
+                        // Base64 이미지 저장 - 키 이름 수정
+                        localStorage.setItem(input, e.target.result);
                     };
                     reader.readAsDataURL(file);
                 }
             });
             
-            // 저장된 이미지 로드
-            const savedImage = localStorage.getItem(`photo_${input}`);
+            // 저장된 이미지 로드 - 키 이름 수정
+            const savedImage = localStorage.getItem(input);
             if (savedImage) {
                 previewEl.src = savedImage;
                 previewEl.style.display = 'block';
@@ -206,6 +206,7 @@ function setupPhotoPreview() {
         }
     });
 }
+
 // 일차별 완료 설정
 function setupDayCompletion() {
     document.getElementById('complete-day1-btn')?.addEventListener('click', (e) => {
@@ -248,75 +249,115 @@ async function completeDayAndGenerateImage(day) {
     } catch (error) {
         console.error('이미지 생성 오류:', error);
         if (statusEl) {
-            statusEl.textContent = '⚠️ 이미지 생성 중 오류가 발생했습니다.';
+            statusEl.textContent = '⚠️ 이미지 생성 중 오류가 발생했습니다. 다시 시도해주세요.';
             statusEl.className = 'mt-2 text-sm text-red-400';
         }
     }
 }
 
-// SNS 공유용 이미지 생성
+// SNS 공유용 이미지 생성 - 개선됨
 async function generateDailyImage(day) {
-    // 학생 정보 수집
-    const studentName = document.getElementById('anonymous_mode').checked 
-        ? '제주 탐험가' 
-        : document.getElementById('student_name').value || '제주 탐험가';
-    const studentClass = document.getElementById('student_class').value || '-';
-    const mode = document.querySelector('input[name="mode"]:checked')?.value || 'individual';
-    const teamName = document.getElementById('team_name').value;
-    const teamRole = document.getElementById('team_role').value;
-    
-    // 날짜별 데이터 수집
-    const dayData = collectDayData(day);
-    
-    // 템플릿 HTML 생성
-    const templateHTML = createSNSTemplate(day, dayData, {
-        name: studentName,
-        classNum: studentClass,
-        mode: mode,
-        teamName: teamName,
-        teamRole: teamRole
-    });
-    
-    // 임시 컨테이너 생성
-    const tempContainer = document.createElement('div');
-    tempContainer.innerHTML = templateHTML;
-    tempContainer.style.position = 'fixed';
-    tempContainer.style.top = '-9999px';
-    tempContainer.style.width = '1080px';
-    tempContainer.style.zIndex = '-1';
-    document.body.appendChild(tempContainer);
-    
-    // 이미지 생성
-    await new Promise(resolve => setTimeout(resolve, 100)); // DOM 렌더링 대기
-    
     try {
-        const canvas = await html2canvas(tempContainer.firstChild, {
-            scale: 2,
+        // html2canvas 라이브러리 확인
+        if (typeof html2canvas === 'undefined') {
+            throw new Error('html2canvas 라이브러리가 로드되지 않았습니다.');
+        }
+        
+        // 학생 정보 수집
+        const studentName = document.getElementById('anonymous_mode')?.checked 
+            ? '제주 탐험가' 
+            : document.getElementById('student_name')?.value || '제주 탐험가';
+        const studentClass = document.getElementById('student_class')?.value || '-';
+        const mode = document.querySelector('input[name="mode"]:checked')?.value || 'individual';
+        const teamName = document.getElementById('team_name')?.value;
+        const teamRole = document.getElementById('team_role')?.value;
+        
+        // 날짜별 데이터 수집
+        const dayData = collectDayData(day);
+        
+        // 템플릿 HTML 생성
+        const templateHTML = createSNSTemplate(day, dayData, {
+            name: studentName,
+            classNum: studentClass,
+            mode: mode,
+            teamName: teamName,
+            teamRole: teamRole
+        });
+        
+        // 임시 컨테이너 생성
+        const tempContainer = document.createElement('div');
+        tempContainer.style.cssText = `
+            position: fixed;
+            top: -10000px;
+            left: 0;
+            width: 1080px;
+            z-index: -1000;
+        `;
+        tempContainer.innerHTML = templateHTML;
+        document.body.appendChild(tempContainer);
+        
+        // DOM 렌더링 대기
+        await new Promise(resolve => setTimeout(resolve, 500));
+        
+        // 렌더링할 요소 확인
+        const targetElement = tempContainer.querySelector('div');
+        if (!targetElement) {
+            throw new Error('렌더링할 요소를 찾을 수 없습니다.');
+        }
+        
+        // 이미지 생성
+        const canvas = await html2canvas(targetElement, {
+            scale: 1.5,
             backgroundColor: '#ffffff',
             logging: false,
             useCORS: true,
-            allowTaint: true
+            allowTaint: false,
+            width: 1080,
+            height: 1920,
+            windowWidth: 1080,
+            windowHeight: 1920
         });
         
         // 이미지 다운로드
         canvas.toBlob(blob => {
+            if (!blob) {
+                throw new Error('이미지 생성에 실패했습니다.');
+            }
+            
             const url = URL.createObjectURL(blob);
             const a = document.createElement('a');
             a.href = url;
-            const fileName = `제주학습_${day}일차_${studentName.replace(/[^a-zA-Z0-9가-힣]/g, '')}.png`;
+            const safeName = studentName.replace(/[^a-zA-Z0-9가-힣]/g, '');
+            const fileName = `제주학습_${day}일차_${safeName || '학생'}.png`;
             a.download = fileName;
+            document.body.appendChild(a);
             a.click();
+            document.body.removeChild(a);
             URL.revokeObjectURL(url);
             
             // 성공 알림
             showNotification(`📸 ${day}일차 SNS 이미지가 저장되었습니다!`, 'success');
         }, 'image/png');
-    } finally {
+        
+        // 임시 컨테이너 제거
         document.body.removeChild(tempContainer);
+        
+    } catch (error) {
+        console.error('이미지 생성 오류 상세:', error);
+        
+        let errorMessage = '이미지 생성 중 오류가 발생했습니다.';
+        if (error.message.includes('html2canvas')) {
+            errorMessage = '이미지 생성 라이브러리를 불러올 수 없습니다. 페이지를 새로고침해주세요.';
+        } else if (error.message.includes('렌더링')) {
+            errorMessage = '이미지 렌더링에 실패했습니다. 다시 시도해주세요.';
+        }
+        
+        showNotification(`⚠️ ${errorMessage}`, 'error');
+        throw error;
     }
 }
 
-// 날짜별 데이터 수집
+// 날짜별 데이터 수집 - 수정됨
 function collectDayData(day) {
     const data = {
         date: new Date().toLocaleDateString('ko-KR', { 
@@ -338,10 +379,11 @@ function collectDayData(day) {
             bontae: document.querySelector('input[name="quiz_bontae"]:checked')?.value,
             gotjawal: document.querySelector('input[name="quiz_gotjawal"]:checked')?.value
         };
-        data.experience = document.getElementById('exp_gotjawal').value || '';
+        data.experience = document.getElementById('exp_gotjawal')?.value || '';
+        // 키 이름 수정
         data.photos = {
-            osulloc: localStorage.getItem('photo_photo_osulloc'),
-            bontae: localStorage.getItem('photo_photo_bontae')
+            osulloc: localStorage.getItem('photo_osulloc'),
+            bontae: localStorage.getItem('photo_bontae')
         };
         data.highlight = '곶자왈 숲길 체험';
     } else if (day === 2) {
@@ -357,14 +399,15 @@ function collectDayData(day) {
             seongeup: document.querySelector('input[name="quiz_seongeup"]:checked')?.value
         };
         data.experience = {
-            haenyeo: document.getElementById('exp_haenyeo').value || '',
-            kayak: document.getElementById('exp_kayak').value || '',
-            nexon: document.getElementById('exp_nexon').value || ''
+            haenyeo: document.getElementById('exp_haenyeo')?.value || '',
+            kayak: document.getElementById('exp_kayak')?.value || '',
+            nexon: document.getElementById('exp_nexon')?.value || ''
         };
+        // 키 이름 수정
         data.photos = {
-            kayak: localStorage.getItem('photo_photo_kayak'),
-            seongeup: localStorage.getItem('photo_photo_seongeup'),
-            nexon: localStorage.getItem('photo_photo_nexon')
+            kayak: localStorage.getItem('photo_kayak'),
+            seongeup: localStorage.getItem('photo_seongeup'),
+            nexon: localStorage.getItem('photo_nexon')
         };
         data.highlight = '카약 체험';
     } else if (day === 3) {
@@ -376,13 +419,14 @@ function collectDayData(day) {
             arte: document.querySelector('input[name="quiz_arte"]:checked')?.value
         };
         data.experience = {
-            arte: document.getElementById('exp_arte').value || '',
-            bestPlace: document.getElementById('exp_best_place').value || '',
-            learning: document.getElementById('exp_learning').value || '',
-            final: document.getElementById('exp_final').value || ''
+            arte: document.getElementById('exp_arte')?.value || '',
+            bestPlace: document.getElementById('exp_best_place')?.value || '',
+            learning: document.getElementById('exp_learning')?.value || '',
+            final: document.getElementById('exp_final')?.value || ''
         };
+        // 키 이름 수정
         data.photos = {
-            arte: localStorage.getItem('photo_photo_arte')
+            arte: localStorage.getItem('photo_arte')
         };
         data.highlight = '미디어아트 체험';
     }
@@ -569,7 +613,7 @@ function showAutosaveIndicator() {
     }
 }
 
-// 백업/복원 설정
+// 백업/복원 설정 - 수정됨
 function setupBackupRestore() {
     // 백업 내보내기
     document.getElementById('export-btn')?.addEventListener('click', () => {
@@ -581,9 +625,9 @@ function setupBackupRestore() {
             progress: localStorage.getItem('dayProgress')
         };
         
-        // 사진 데이터 수집
+        // 사진 데이터 수집 - 키 이름 수정
         ['photo_osulloc', 'photo_bontae', 'photo_kayak', 'photo_seongeup', 'photo_nexon', 'photo_arte'].forEach(key => {
-            const photoData = localStorage.getItem(`photo_${key}`);
+            const photoData = localStorage.getItem(key);
             if (photoData) {
                 data.photos[key] = photoData;
             }
@@ -618,9 +662,9 @@ function setupBackupRestore() {
                     localStorage.setItem('dayProgress', data.progress);
                 }
                 
-                // 사진 복원
+                // 사진 복원 - 키 이름 수정
                 Object.keys(data.photos || {}).forEach(key => {
-                    localStorage.setItem(`photo_${key}`, data.photos[key]);
+                    localStorage.setItem(key, data.photos[key]);
                 });
                 
                 // 페이지 새로고침
