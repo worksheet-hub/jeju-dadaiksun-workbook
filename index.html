@@ -116,13 +116,30 @@
             flex: 1;
             min-width: 150px;
         }
+        .team-info-container {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            flex-wrap: wrap;
+        }
+        .team-info-container select {
+            width: auto;
+            min-width: 80px;
+        }
+        .team-info-container input[type="text"] {
+            flex: 1;
+            min-width: 150px;
+        }
         @media (max-width: 640px) {
-            .student-info-container {
+            .student-info-container,
+            .team-info-container {
                 flex-direction: column;
                 align-items: stretch;
             }
             .student-info-container select,
-            .student-info-container input[type="text"] {
+            .student-info-container input[type="text"],
+            .team-info-container select,
+            .team-info-container input[type="text"] {
                 width: 100%;
             }
         }
@@ -225,23 +242,27 @@
                             <!-- 팀 정보 (팀 모드일 때만 표시) -->
                             <div id="team_info_section" class="mb-6 p-4 bg-slate-700 rounded-lg hidden">
                                 <h3 class="text-lg font-semibold text-blue-300 mb-3">🏆 팀 정보</h3>
-                                <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-                                    <div>
-                                        <label for="team_name" class="block text-sm font-medium text-gray-300">팀명</label>
-                                        <input type="text" id="team_name" placeholder="예: 제주 탐험대" class="savable mt-1 block w-full bg-gray-600 border-gray-500 rounded-md shadow-sm p-2">
-                                    </div>
-                                    <div>
-                                        <label for="team_role" class="block text-sm font-medium text-gray-300">내 역할</label>
-                                        <select id="team_role" class="savable mt-1 block w-full bg-gray-600 border-gray-500 rounded-md shadow-sm p-2">
-                                            <option value="">역할 선택</option>
-                                            <option value="팀장">👑 팀장</option>
-                                            <option value="기록담당">📝 기록담당</option>
-                                            <option value="사진담당">📸 사진담당</option>
-                                            <option value="발표담당">🎤 발표담당</option>
-                                            <option value="팀원">👥 팀원</option>
+                                
+                                <!-- 팀 글로컬 반 정보 -->
+                                <div class="mb-4">
+                                    <label class="block text-sm font-medium text-gray-300 mb-2">팀 소속 반</label>
+                                    <div class="team-info-container p-3 bg-gray-600 bg-opacity-50 rounded">
+                                        <span class="text-gray-300 font-medium">글로컬</span>
+                                        <select id="team_class" class="savable bg-gray-700 border-gray-600 rounded-md shadow-sm p-2">
+                                            <option value="">-</option>
+                                            <option value="1">1</option>
+                                            <option value="2">2</option>
+                                            <option value="3">3</option>
                                         </select>
+                                        <span class="text-gray-300 font-medium">반</span>
                                     </div>
                                 </div>
+                                
+                                <div class="mb-4">
+                                    <label for="team_name" class="block text-sm font-medium text-gray-300">팀명</label>
+                                    <input type="text" id="team_name" placeholder="예: 제주 탐험대" class="savable mt-1 block w-full bg-gray-600 border-gray-500 rounded-md shadow-sm p-2">
+                                </div>
+                                
                                 <div>
                                     <label for="team_members" class="block text-sm font-medium text-gray-300">팀원 목록 (쉼표로 구분)</label>
                                     <input type="text" id="team_members" placeholder="예: 김철수, 이영희, 박민수, 정수진" class="savable mt-1 block w-full bg-gray-600 border-gray-500 rounded-md shadow-sm p-2">
@@ -363,10 +384,6 @@
                                         <label class="flex items-center space-x-2">
                                             <input type="checkbox" id="chk_hat" class="savable h-4 w-4 rounded">
                                             <span>모자</span>
-                                        </label>
-                                        <label class="flex items-center space-x-2">
-                                            <input type="checkbox" id="chk_sunglasses" class="savable h-4 w-4 rounded">
-                                            <span>선글라스</span>
                                         </label>
                                     </div>
                                 </div>
