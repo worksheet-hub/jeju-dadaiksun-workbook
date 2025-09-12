@@ -271,7 +271,7 @@ async function generateDailyImage(day) {
         const studentClass = document.getElementById('student_class')?.value || '?';
         const mode = document.querySelector('input[name="mode"]:checked')?.value || 'individual';
         const teamName = document.getElementById('team_name')?.value?.trim() || '';
-        const teamRole = document.getElementById('team_role')?.value || '';
+        const teamClass = document.getElementById('team_class')?.value || '';
         
         console.log('수집된 학생 정보:', {
             anonymousMode,
@@ -280,7 +280,7 @@ async function generateDailyImage(day) {
             studentClass,
             mode,
             teamName,
-            teamRole
+            teamClass
         });
         
         // 날짜별 데이터 수집
@@ -292,7 +292,7 @@ async function generateDailyImage(day) {
             classNum: studentClass,
             mode: mode,
             teamName: teamName,
-            teamRole: teamRole
+            teamClass: teamClass
         });
         
         // 임시 컨테이너 생성
@@ -478,13 +478,13 @@ function createSNSTemplate(day, data, studentInfo) {
     const displayName = studentInfo.name || '제주 탐험가';
     const displayClass = studentInfo.classNum || '?';
     const displayTeamName = studentInfo.teamName || '';
-    const displayTeamRole = studentInfo.teamRole || '';
+    const displayTeamClass = studentInfo.teamClass || '';
     
     console.log('템플릿 생성 - 학생 정보:', { 
         name: displayName, 
         class: displayClass, 
         team: displayTeamName,
-        role: displayTeamRole,
+        teamClass: displayTeamClass,
         mode: studentInfo.mode 
     });
     
@@ -509,10 +509,9 @@ function createSNSTemplate(day, data, studentInfo) {
                 <div style="display: inline-block; background: white; border-radius: 30px; padding: 15px 30px; box-shadow: 0 10px 30px rgba(0,0,0,0.2);">
                     <div style="font-size: 28px; color: #1e293b; font-weight: 600;">
                         ${studentInfo.mode === 'team' && displayTeamName ? 
-                            `🏆 ${displayTeamName}` : 
+                            `🏆 ${displayTeamName} (글로컬 ${displayTeamClass || displayClass}반)` : 
                             '👤'} 
                         글로컬 ${displayClass}반 ${displayName}
-                        ${displayTeamRole ? ` | ${displayTeamRole}` : ''}
                     </div>
                 </div>
             </div>
