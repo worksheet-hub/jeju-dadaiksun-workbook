@@ -166,7 +166,7 @@ function loadAllData() {
     }
 }
 
-// 사진 미리보기 설정 - 수정됨
+// 사진 미리보기 설정
 function setupPhotoPreview() {
     const photoInputs = [
         { input: 'photo_osulloc', preview: 'preview_osulloc' },
@@ -190,14 +190,14 @@ function setupPhotoPreview() {
                         previewEl.src = e.target.result;
                         previewEl.style.display = 'block';
                         
-                        // Base64 이미지 저장 - 키 이름 수정
+                        // Base64 이미지 저장
                         localStorage.setItem(input, e.target.result);
                     };
                     reader.readAsDataURL(file);
                 }
             });
             
-            // 저장된 이미지 로드 - 키 이름 수정
+            // 저장된 이미지 로드
             const savedImage = localStorage.getItem(input);
             if (savedImage) {
                 previewEl.src = savedImage;
@@ -255,7 +255,7 @@ async function completeDayAndGenerateImage(day) {
     }
 }
 
-// SNS 공유용 이미지 생성 - 개선됨
+// SNS 공유용 이미지 생성 - 개선된 버전
 async function generateDailyImage(day) {
     try {
         // html2canvas 라이브러리 확인
@@ -263,14 +263,25 @@ async function generateDailyImage(day) {
             throw new Error('html2canvas 라이브러리가 로드되지 않았습니다.');
         }
         
-        // 학생 정보 수집
-        const studentName = document.getElementById('anonymous_mode')?.checked 
-            ? '제주 탐험가' 
-            : document.getElementById('student_name')?.value || '제주 탐험가';
-        const studentClass = document.getElementById('student_class')?.value || '-';
+        // 학생 정보 수집 - 더 명확하게
+        const anonymousMode = document.getElementById('anonymous_mode')?.checked || false;
+        const studentNameValue = document.getElementById('student_name')?.value?.trim() || '';
+        const studentName = anonymousMode ? '제주 탐험가' : (studentNameValue || '제주 탐험가');
+        
+        const studentClass = document.getElementById('student_class')?.value || '?';
         const mode = document.querySelector('input[name="mode"]:checked')?.value || 'individual';
-        const teamName = document.getElementById('team_name')?.value;
-        const teamRole = document.getElementById('team_role')?.value;
+        const teamName = document.getElementById('team_name')?.value?.trim() || '';
+        const teamRole = document.getElementById('team_role')?.value || '';
+        
+        console.log('수집된 학생 정보:', {
+            anonymousMode,
+            studentNameValue,
+            studentName,
+            studentClass,
+            mode,
+            teamName,
+            teamRole
+        });
         
         // 날짜별 데이터 수집
         const dayData = collectDayData(day);
@@ -287,17 +298,31 @@ async function generateDailyImage(day) {
         // 임시 컨테이너 생성
         const tempContainer = document.createElement('div');
         tempContainer.style.cssText = `
-            position: fixed;
-            top: -10000px;
-            left: 0;
+            position: absolute;
+            top: 0;
+            left: -10000px;
             width: 1080px;
             z-index: -1000;
+            background: white;
         `;
         tempContainer.innerHTML = templateHTML;
         document.body.appendChild(tempContainer);
         
-        // DOM 렌더링 대기
-        await new Promise(resolve => setTimeout(resolve, 500));
+        // 이미지 로드 대기
+        const images = tempContainer.querySelectorAll('img');
+        const imagePromises = Array.from(images).map(img => {
+            return new Promise((resolve) => {
+                if (img.complete) {
+                    resolve();
+                } else {
+                    img.onload = resolve;
+                    img.onerror = resolve;
+                }
+            });
+        });
+        
+        await Promise.all(imagePromises);
+        await new Promise(resolve => setTimeout(resolve, 1000));
         
         // 렌더링할 요소 확인
         const targetElement = tempContainer.querySelector('div');
@@ -307,15 +332,20 @@ async function generateDailyImage(day) {
         
         // 이미지 생성
         const canvas = await html2canvas(targetElement, {
-            scale: 1.5,
+            scale: 2,
             backgroundColor: '#ffffff',
             logging: false,
             useCORS: true,
-            allowTaint: false,
+            allowTaint: true,
             width: 1080,
             height: 1920,
             windowWidth: 1080,
-            windowHeight: 1920
+            windowHeight: 1920,
+            imageTimeout: 15000,
+            onclone: (clonedDoc) => {
+                const clonedImages = clonedDoc.querySelectorAll('img');
+                console.log(`클론된 이미지 수: ${clonedImages.length}`);
+            }
         });
         
         // 이미지 다운로드
@@ -337,10 +367,12 @@ async function generateDailyImage(day) {
             
             // 성공 알림
             showNotification(`📸 ${day}일차 SNS 이미지가 저장되었습니다!`, 'success');
-        }, 'image/png');
+        }, 'image/png', 0.95);
         
         // 임시 컨테이너 제거
-        document.body.removeChild(tempContainer);
+        setTimeout(() => {
+            document.body.removeChild(tempContainer);
+        }, 100);
         
     } catch (error) {
         console.error('이미지 생성 오류 상세:', error);
@@ -357,7 +389,7 @@ async function generateDailyImage(day) {
     }
 }
 
-// 날짜별 데이터 수집 - 수정됨
+// 날짜별 데이터 수집
 function collectDayData(day) {
     const data = {
         date: new Date().toLocaleDateString('ko-KR', { 
@@ -380,7 +412,6 @@ function collectDayData(day) {
             gotjawal: document.querySelector('input[name="quiz_gotjawal"]:checked')?.value
         };
         data.experience = document.getElementById('exp_gotjawal')?.value || '';
-        // 키 이름 수정
         data.photos = {
             osulloc: localStorage.getItem('photo_osulloc'),
             bontae: localStorage.getItem('photo_bontae')
@@ -403,7 +434,6 @@ function collectDayData(day) {
             kayak: document.getElementById('exp_kayak')?.value || '',
             nexon: document.getElementById('exp_nexon')?.value || ''
         };
-        // 키 이름 수정
         data.photos = {
             kayak: localStorage.getItem('photo_kayak'),
             seongeup: localStorage.getItem('photo_seongeup'),
@@ -424,7 +454,6 @@ function collectDayData(day) {
             learning: document.getElementById('exp_learning')?.value || '',
             final: document.getElementById('exp_final')?.value || ''
         };
-        // 키 이름 수정
         data.photos = {
             arte: localStorage.getItem('photo_arte')
         };
@@ -434,7 +463,7 @@ function collectDayData(day) {
     return data;
 }
 
-// SNS 템플릿 생성
+// SNS 템플릿 생성 - 개선된 버전
 function createSNSTemplate(day, data, studentInfo) {
     const dayColors = {
         1: { primary: '#3B82F6', secondary: '#60A5FA', gradient: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)' },
@@ -444,6 +473,20 @@ function createSNSTemplate(day, data, studentInfo) {
     
     const color = dayColors[day];
     const photos = Object.values(data.photos || {}).filter(p => p);
+    
+    // 학생 정보 확인 및 기본값 설정
+    const displayName = studentInfo.name || '제주 탐험가';
+    const displayClass = studentInfo.classNum || '?';
+    const displayTeamName = studentInfo.teamName || '';
+    const displayTeamRole = studentInfo.teamRole || '';
+    
+    console.log('템플릿 생성 - 학생 정보:', { 
+        name: displayName, 
+        class: displayClass, 
+        team: displayTeamName,
+        role: displayTeamRole,
+        mode: studentInfo.mode 
+    });
     
     return `
     <div style="width: 1080px; height: 1920px; background: ${color.gradient}; position: relative; font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, sans-serif;">
@@ -465,9 +508,11 @@ function createSNSTemplate(day, data, studentInfo) {
                 <!-- 학생 정보 배지 -->
                 <div style="display: inline-block; background: white; border-radius: 30px; padding: 15px 30px; box-shadow: 0 10px 30px rgba(0,0,0,0.2);">
                     <div style="font-size: 28px; color: #1e293b; font-weight: 600;">
-                        ${studentInfo.mode === 'team' ? `🏆 ${studentInfo.teamName || '우리팀'}` : '👤'} 
-                        글로컬 ${studentInfo.classNum}반 ${studentInfo.name}
-                        ${studentInfo.teamRole ? ` | ${studentInfo.teamRole}` : ''}
+                        ${studentInfo.mode === 'team' && displayTeamName ? 
+                            `🏆 ${displayTeamName}` : 
+                            '👤'} 
+                        글로컬 ${displayClass}반 ${displayName}
+                        ${displayTeamRole ? ` | ${displayTeamRole}` : ''}
                     </div>
                 </div>
             </div>
@@ -475,10 +520,10 @@ function createSNSTemplate(day, data, studentInfo) {
             <!-- 일차 테마 -->
             <div style="background: rgba(255,255,255,0.95); border-radius: 30px; padding: 30px; margin-bottom: 25px; box-shadow: 0 10px 30px rgba(0,0,0,0.1);">
                 <h2 style="font-size: 32px; color: ${color.primary}; margin-bottom: 20px; font-weight: bold;">
-                    📍 ${data.title}
+                    📍 ${data.title || '오늘의 여행'}
                 </h2>
                 <div style="display: flex; flex-wrap: wrap; gap: 12px;">
-                    ${data.places.map(place => `
+                    ${(data.places || []).map(place => `
                         <div style="background: ${color.primary}; color: white; padding: 12px 20px; border-radius: 20px; font-size: 22px;">
                             ${place.icon} ${place.name} <span style="opacity: 0.8; font-size: 18px;">${place.time}</span>
                         </div>
@@ -493,9 +538,9 @@ function createSNSTemplate(day, data, studentInfo) {
                     📸 오늘의 순간들
                 </h3>
                 <div style="display: grid; grid-template-columns: ${photos.length === 1 ? '1fr' : 'repeat(2, 1fr)'}; gap: 15px;">
-                    ${photos.slice(0, 4).map(photo => `
-                        <div style="position: relative; border-radius: 20px; overflow: hidden; box-shadow: 0 5px 15px rgba(0,0,0,0.2);">
-                            <img src="${photo}" style="width: 100%; height: ${photos.length === 1 ? '400px' : '220px'}; object-fit: cover;">
+                    ${photos.slice(0, 4).map((photo, index) => `
+                        <div style="position: relative; border-radius: 20px; overflow: hidden; box-shadow: 0 5px 15px rgba(0,0,0,0.2); ${photos.length === 1 ? 'grid-column: span 2;' : ''}">
+                            <img src="${photo}" style="width: 100%; height: ${photos.length === 1 ? '400px' : '220px'}; object-fit: cover;" onerror="this.style.display='none'">
                         </div>
                     `).join('')}
                 </div>
@@ -507,11 +552,11 @@ function createSNSTemplate(day, data, studentInfo) {
                 <h3 style="font-size: 28px; color: ${color.primary}; margin-bottom: 20px; font-weight: bold;">
                     💭 오늘의 기록
                 </h3>
-                <div style="font-size: 24px; line-height: 1.8; color: #475569;">
-                    ${getFormattedExperience(day, data)}
+                <div style="font-size: 22px; line-height: 1.8; color: #475569;">
+                    ${getFormattedExperience(day, data) || '즐거운 제주 여행!'}
                 </div>
                 
-                ${day === 3 && data.experience.final ? `
+                ${day === 3 && data.experience && data.experience.final ? `
                 <div style="margin-top: 30px; padding: 20px; background: ${color.primary}; border-radius: 20px;">
                     <div style="font-size: 26px; color: white; text-align: center; font-weight: bold;">
                         🏆 "${data.experience.final}"
@@ -523,10 +568,10 @@ function createSNSTemplate(day, data, studentInfo) {
             <!-- 푸터 -->
             <div style="background: rgba(255,255,255,0.9); border-radius: 20px; padding: 20px; display: flex; justify-content: space-between; align-items: center;">
                 <div style="font-size: 20px; color: #64748b;">
-                    ${data.date}
+                    ${data.date || new Date().toLocaleDateString('ko-KR')}
                 </div>
                 <div style="font-size: 18px; color: ${color.primary}; font-weight: 600;">
-                    #제주현장학습 #다다익선 #글로컬${studentInfo.classNum}반 #Day${day}
+                    #제주현장학습 #다다익선 #글로컬${displayClass}반 #Day${day}
                 </div>
             </div>
         </div>
@@ -613,7 +658,7 @@ function showAutosaveIndicator() {
     }
 }
 
-// 백업/복원 설정 - 수정됨
+// 백업/복원 설정
 function setupBackupRestore() {
     // 백업 내보내기
     document.getElementById('export-btn')?.addEventListener('click', () => {
@@ -625,7 +670,7 @@ function setupBackupRestore() {
             progress: localStorage.getItem('dayProgress')
         };
         
-        // 사진 데이터 수집 - 키 이름 수정
+        // 사진 데이터 수집
         ['photo_osulloc', 'photo_bontae', 'photo_kayak', 'photo_seongeup', 'photo_nexon', 'photo_arte'].forEach(key => {
             const photoData = localStorage.getItem(key);
             if (photoData) {
@@ -662,7 +707,7 @@ function setupBackupRestore() {
                     localStorage.setItem('dayProgress', data.progress);
                 }
                 
-                // 사진 복원 - 키 이름 수정
+                // 사진 복원
                 Object.keys(data.photos || {}).forEach(key => {
                     localStorage.setItem(key, data.photos[key]);
                 });
