@@ -17,7 +17,9 @@ document.addEventListener('DOMContentLoaded', function() {
     // 모드 변경 이벤트
     document.querySelectorAll('input[name="mode"]').forEach(radio => {
         radio.addEventListener('change', function() {
-            document.getElementById('team_info_section').classList.toggle('hidden', this.value !== 'team');
+            const isTeamMode = this.value === 'team';
+            document.getElementById('team_info_section').classList.toggle('hidden', !isTeamMode);
+            document.getElementById('individual_info_section').classList.toggle('hidden', isTeamMode);
         });
     });
     
@@ -156,6 +158,10 @@ function loadAllData() {
     const mode = document.querySelector('input[name="mode"]:checked');
     if (mode && mode.value === 'team') {
         document.getElementById('team_info_section').classList.remove('hidden');
+        document.getElementById('individual_info_section').classList.add('hidden');
+    } else {
+        document.getElementById('team_info_section').classList.add('hidden');
+        document.getElementById('individual_info_section').classList.remove('hidden');
     }
     
     // 진행 상태 로드
@@ -265,22 +271,35 @@ async function generateDailyImage(day) {
         
         // 학생 정보 수집 - 더 명확하게
         const anonymousMode = document.getElementById('anonymous_mode')?.checked || false;
-        const studentNameValue = document.getElementById('student_name')?.value?.trim() || '';
-        const studentName = anonymousMode ? '제주 탐험가' : (studentNameValue || '제주 탐험가');
-        
-        const studentClass = document.getElementById('student_class')?.value || '?';
         const mode = document.querySelector('input[name="mode"]:checked')?.value || 'individual';
-        const teamName = document.getElementById('team_name')?.value?.trim() || '';
-        const teamClass = document.getElementById('team_class')?.value || '';
+        
+        let studentName, studentClass, teamName, teamClass, teamLeader;
+        
+        if (mode === 'team') {
+            // 팀 모드
+            teamClass = document.getElementById('team_class')?.value || '?';
+            teamName = document.getElementById('team_name')?.value?.trim() || '팀';
+            teamLeader = document.getElementById('team_leader')?.value?.trim() || '대표';
+            studentName = anonymousMode ? teamName : teamLeader;
+            studentClass = teamClass;
+        } else {
+            // 개인 모드
+            const studentNameValue = document.getElementById('student_name')?.value?.trim() || '';
+            studentName = anonymousMode ? '제주 탐험가' : (studentNameValue || '제주 탐험가');
+            studentClass = document.getElementById('student_class')?.value || '?';
+            teamName = '';
+            teamClass = '';
+            teamLeader = '';
+        }
         
         console.log('수집된 학생 정보:', {
             anonymousMode,
-            studentNameValue,
             studentName,
             studentClass,
             mode,
             teamName,
-            teamClass
+            teamClass,
+            teamLeader
         });
         
         // 날짜별 데이터 수집
@@ -509,9 +528,8 @@ function createSNSTemplate(day, data, studentInfo) {
                 <div style="display: inline-block; background: white; border-radius: 30px; padding: 15px 30px; box-shadow: 0 10px 30px rgba(0,0,0,0.2);">
                     <div style="font-size: 28px; color: #1e293b; font-weight: 600;">
                         ${studentInfo.mode === 'team' && displayTeamName ? 
-                            `🏆 ${displayTeamName} (글로컬 ${displayTeamClass || displayClass}반)` : 
-                            '👤'} 
-                        글로컬 ${displayClass}반 ${displayName}
+                            `🏆 ${displayTeamName} - 글로컬 ${displayClass}반 ${displayName} 팀장` : 
+                            `👤 글로컬 ${displayClass}반 ${displayName}`}
                     </div>
                 </div>
             </div>

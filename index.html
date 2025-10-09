@@ -201,25 +201,27 @@
                             
                             <!-- 개인/팀 모드 선택 -->
                             <div class="mb-6 p-4 bg-slate-700 rounded-lg">
+                                <h3 class="text-lg font-semibold text-blue-300 mb-3">📝 작성 모드 선택</h3>
                                 <div class="flex items-center space-x-6">
                                     <label class="flex items-center space-x-2">
                                         <input type="radio" name="mode" value="individual" id="mode_individual" class="savable" checked>
-                                        <span class="text-gray-300">👤 개인 모드</span>
+                                        <span class="text-gray-300">👤 개인 모드 (내 기기로 작성)</span>
                                     </label>
                                     <label class="flex items-center space-x-2">
                                         <input type="radio" name="mode" value="team" id="mode_team" class="savable">
-                                        <span class="text-gray-300">👥 팀 모드</span>
+                                        <span class="text-gray-300">👥 팀 모드 (기기 없는 친구 포함)</span>
                                     </label>
                                 </div>
+                                <p class="text-xs text-gray-400 mt-2">※ 팀 모드는 핸드폰이 없는 친구를 위해 대표가 작성하는 모드입니다</p>
                             </div>
 
-                            <!-- 개인 정보 (글로컬 ( )반 이름 형식) -->
-                            <div class="mb-6">
-                                <label class="block text-sm font-medium text-gray-300 mb-2">학생 정보</label>
+                            <!-- 개인 모드 정보 -->
+                            <div id="individual_info_section" class="mb-6">
+                                <label class="block text-sm font-medium text-gray-300 mb-2">👤 학생 정보</label>
                                 <div class="student-info-container p-4 bg-slate-700 rounded-lg">
                                     <span class="text-gray-300 font-medium">글로컬</span>
                                     <select id="student_class" class="savable bg-gray-600 border-gray-500 rounded-md shadow-sm p-2">
-                                        <option value="">-</option>
+                                        <option value="">반 선택</option>
                                         <option value="1">1</option>
                                         <option value="2">2</option>
                                         <option value="3">3</option>
@@ -230,26 +232,17 @@
                                 <p class="text-xs text-gray-400 mt-2 ml-1">※ 모든 데이터는 본인 기기에만 저장되며, 외부로 전송되지 않습니다 (온디바이스)</p>
                             </div>
 
-                            <!-- 익명 모드 옵션 추가 -->
-                            <div class="mb-6 p-4 bg-slate-700 rounded-lg">
-                                <label class="flex items-center space-x-2">
-                                    <input type="checkbox" id="anonymous_mode" class="savable h-4 w-4 rounded">
-                                    <span class="text-gray-300">🔒 익명 모드로 이미지 생성 (개인정보 보호)</span>
-                                </label>
-                                <p class="text-xs text-gray-400 mt-1 ml-6">체크하면 이미지 생성 시 이름이 '제주 탐험가'로 표시됩니다</p>
-                            </div>
-
-                            <!-- 팀 정보 (팀 모드일 때만 표시) -->
-                            <div id="team_info_section" class="mb-6 p-4 bg-slate-700 rounded-lg hidden">
+                            <!-- 팀 모드 정보 -->
+                            <div id="team_info_section" class="mb-6 hidden">
                                 <h3 class="text-lg font-semibold text-blue-300 mb-3">🏆 팀 정보</h3>
                                 
-                                <!-- 팀 글로컬 반 정보 -->
+                                <!-- 팀 소속 반 -->
                                 <div class="mb-4">
                                     <label class="block text-sm font-medium text-gray-300 mb-2">팀 소속 반</label>
-                                    <div class="team-info-container p-3 bg-gray-600 bg-opacity-50 rounded">
+                                    <div class="team-info-container p-3 bg-slate-700 rounded">
                                         <span class="text-gray-300 font-medium">글로컬</span>
-                                        <select id="team_class" class="savable bg-gray-700 border-gray-600 rounded-md shadow-sm p-2">
-                                            <option value="">-</option>
+                                        <select id="team_class" class="savable bg-gray-600 border-gray-500 rounded-md shadow-sm p-2">
+                                            <option value="">반 선택</option>
                                             <option value="1">1</option>
                                             <option value="2">2</option>
                                             <option value="3">3</option>
@@ -258,16 +251,36 @@
                                     </div>
                                 </div>
                                 
+                                <!-- 팀명 -->
                                 <div class="mb-4">
-                                    <label for="team_name" class="block text-sm font-medium text-gray-300">팀명</label>
-                                    <input type="text" id="team_name" placeholder="예: 제주 탐험대" class="savable mt-1 block w-full bg-gray-600 border-gray-500 rounded-md shadow-sm p-2">
+                                    <label for="team_name" class="block text-sm font-medium text-gray-300 mb-2">팀명</label>
+                                    <input type="text" id="team_name" placeholder="예: 제주 탐험대" class="savable block w-full bg-slate-700 border-gray-600 rounded-md shadow-sm p-3">
                                 </div>
                                 
-                                <div>
-                                    <label for="team_members" class="block text-sm font-medium text-gray-300">팀원 목록 (쉼표로 구분)</label>
-                                    <input type="text" id="team_members" placeholder="예: 김철수, 이영희, 박민수, 정수진" class="savable mt-1 block w-full bg-gray-600 border-gray-500 rounded-md shadow-sm p-2">
-                                    <p class="text-xs text-gray-400 mt-1">팀장 포함 모든 팀원의 이름을 입력해주세요</p>
+                                <!-- 팀장 -->
+                                <div class="mb-4">
+                                    <label for="team_leader" class="block text-sm font-medium text-gray-300 mb-2">팀장 (작성 대표)</label>
+                                    <input type="text" id="team_leader" placeholder="예: 여한기" class="savable block w-full bg-slate-700 border-gray-600 rounded-md shadow-sm p-3">
+                                    <p class="text-xs text-gray-400 mt-1">※ 이 기기로 작성하는 학생의 이름을 입력하세요</p>
                                 </div>
+                                
+                                <!-- 팀원 목록 -->
+                                <div>
+                                    <label for="team_members" class="block text-sm font-medium text-gray-300 mb-2">팀원 목록 (쉼표로 구분)</label>
+                                    <input type="text" id="team_members" placeholder="예: 김철수, 이영희, 박민수, 정수진" class="savable block w-full bg-slate-700 border-gray-600 rounded-md shadow-sm p-3">
+                                    <p class="text-xs text-gray-400 mt-1">※ 팀장 제외한 나머지 팀원의 이름을 입력하세요 (핸드폰 없는 친구들)</p>
+                                </div>
+                            </div>
+
+                            <!-- 익명 모드 옵션 -->
+                            <div class="mb-6 p-4 bg-slate-700 rounded-lg">
+                                <label class="flex items-start space-x-3">
+                                    <input type="checkbox" id="anonymous_mode" class="savable h-5 w-5 mt-0.5 rounded">
+                                    <div>
+                                        <span class="text-gray-300 font-semibold">🔒 익명 모드로 이미지 생성 (개인정보 보호)</span>
+                                        <p class="text-xs text-gray-400 mt-1">체크하면 SNS 이미지에 이름 대신 '제주 탐험가' 또는 '팀명'만 표시됩니다</p>
+                                    </div>
+                                </label>
                             </div>
                             
                             <!-- 다다익선 정보 안내 -->
