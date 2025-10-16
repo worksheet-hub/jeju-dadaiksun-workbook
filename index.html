@@ -290,19 +290,14 @@
                                 <p class="text-gray-400 text-xs mt-1">글로컬 1반, 2반, 3반 학생들의 제주 현장학습 워크북입니다</p>
                             </div>
                             
-                            <h3 class="text-xl font-semibold text-blue-300 mb-4 mt-6">인솔교사 비상 연락처</h3>
-                            <div class="space-y-4">
-                                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                    <input type="text" id="teacher1_name" placeholder="선생님 1 이름" class="savable block w-full bg-gray-700 border-gray-600 rounded-md shadow-sm p-2">
-                                    <input type="tel" id="teacher1_contact" placeholder="선생님 1 연락처" class="savable block w-full bg-gray-700 border-gray-600 rounded-md shadow-sm p-2">
-                                </div>
-                                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                    <input type="text" id="teacher2_name" placeholder="선생님 2 이름 (선택)" class="savable block w-full bg-gray-700 border-gray-600 rounded-md shadow-sm p-2">
-                                    <input type="tel" id="teacher2_contact" placeholder="선생님 2 연락처 (선택)" class="savable block w-full bg-gray-700 border-gray-600 rounded-md shadow-sm p-2">
-                                </div>
-                                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                    <input type="text" id="teacher3_name" placeholder="선생님 3 이름 (선택)" class="savable block w-full bg-gray-700 border-gray-600 rounded-md shadow-sm p-2">
-                                    <input type="tel" id="teacher3_contact" placeholder="선생님 3 연락처 (선택)" class="savable block w-full bg-gray-700 border-gray-600 rounded-md shadow-sm p-2">
+                            <!-- 우리 반 인솔 선생님 연락처 (자동 표시) -->
+                            <div id="teacher_contact_display" class="p-4 bg-green-900 bg-opacity-30 rounded-lg border border-green-500 hidden">
+                                <h3 class="text-xl font-semibold text-green-300 mb-3 flex items-center">
+                                    <span class="mr-2">📞</span> 우리 반 인솔 선생님 비상 연락처
+                                </h3>
+                                <p class="text-sm text-gray-300 mb-4">※ 위에서 반을 선택하면 자동으로 표시됩니다</p>
+                                <div id="teacher_contact_list" class="space-y-3">
+                                    <!-- JavaScript로 동적 생성됨 -->
                                 </div>
                             </div>
                         </div>
