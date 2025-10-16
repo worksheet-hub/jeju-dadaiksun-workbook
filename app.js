@@ -781,3 +781,120 @@ style.textContent = `
     }
 `;
 document.head.appendChild(style);
+
+// 반별 인솔교사 정보 (인코딩됨 - 개인정보 보호)
+// Base64 인코딩으로 소스코드에서 전화번호 직접 노출 방지
+const teacherDataEncoded = {
+    '1': [
+        { name: '강경진', phone: 'MDEwLTkwNTItODE0Mw==' },
+        { name: '조영준', phone: 'MDEwLTYyMzQtMTIxMg==' }
+    ],
+    '2': [
+        { name: '여한기', phone: 'MDEwLTI2ODgtMDExNQ==' },
+        { name: '남의정', phone: 'MDEwLTUwMzAtNzM2Mw==' }
+    ],
+    '3': [
+        { name: '황인랑', phone: 'MDEwLTM4MzUtOTMzMA==' },
+        { name: '김영학', phone: 'MDEwLTg1ODEtNDI4MA==' }
+    ]
+};
+
+// 전화번호 디코딩 함수
+function decodePhone(encoded) {
+    try {
+        return atob(encoded);
+    } catch (e) {
+        return '';
+    }
+}
+
+// 사용 시 디코딩된 데이터
+const teacherData = {};
+Object.keys(teacherDataEncoded).forEach(classNum => {
+    teacherData[classNum] = teacherDataEncoded[classNum].map(teacher => ({
+        name: teacher.name,
+        phone: decodePhone(teacher.phone)
+    }));
+});
+
+// 인솔교사 연락처 자동 표시 기능
+function updateTeacherContactDisplay() {
+    const displayDiv = document.getElementById('teacher_contact_display');
+    const listDiv = document.getElementById('teacher_contact_list');
+    
+    if (!displayDiv || !listDiv) return;
+    
+    // 현재 모드 확인 (개인 모드 vs 팀 모드)
+    const isIndividualMode = document.getElementById('mode_individual')?.checked;
+    
+    // 선택된 반 가져오기
+    let selectedClass = '';
+    if (isIndividualMode) {
+        selectedClass = document.getElementById('student_class')?.value || '';
+    } else {
+        selectedClass = document.getElementById('team_class')?.value || '';
+    }
+    
+    // 반이 선택되지 않았으면 숨김
+    if (!selectedClass || !teacherData[selectedClass]) {
+        displayDiv.classList.add('hidden');
+        return;
+    }
+    
+    // 선택된 반의 선생님 정보 가져오기
+    const teachers = teacherData[selectedClass];
+    
+    // 연락처 카드 HTML 생성
+    listDiv.innerHTML = teachers.map((teacher, index) => `
+        <div class="flex items-center justify-between bg-slate-700 p-4 rounded-lg hover:bg-slate-600 transition-colors">
+            <div class="flex items-center space-x-4">
+                <span class="text-3xl">${index === 0 ? '👨‍🏫' : '👩‍🏫'}</span>
+                <div>
+                    <p class="font-bold text-white text-lg">${teacher.name} 선생님</p>
+                    <p class="text-gray-300 text-sm">${teacher.phone}</p>
+                </div>
+            </div>
+            <a href="tel:${teacher.phone}" 
+               class="bg-green-600 hover:bg-green-700 text-white font-bold py-3 px-5 rounded-lg flex items-center gap-2 transition-all hover:scale-105 shadow-lg">
+                <span class="text-xl">📞</span>
+                <span>전화하기</span>
+            </a>
+        </div>
+    `).join('');
+    
+    // 표시
+    displayDiv.classList.remove('hidden');
+}
+
+// DOMContentLoaded 이벤트에 반 선택 감시 추가
+document.addEventListener('DOMContentLoaded', function() {
+    // 기존 초기화 함수들...
+    
+    // 반 선택 드롭다운 감시
+    const studentClassSelect = document.getElementById('student_class');
+    const teamClassSelect = document.getElementById('team_class');
+    
+    if (studentClassSelect) {
+        studentClassSelect.addEventListener('change', updateTeacherContactDisplay);
+    }
+    
+    if (teamClassSelect) {
+        teamClassSelect.addEventListener('change', updateTeacherContactDisplay);
+    }
+    
+    // 모드 전환 시에도 업데이트
+    document.querySelectorAll('input[name="mode"]').forEach(radio => {
+        radio.addEventListener('change', function() {
+            // 기존 모드 전환 로직...
+            const isTeamMode = this.value === 'team';
+            document.getElementById('team_info_section')?.classList.toggle('hidden', !isTeamMode);
+            document.getElementById('individual_info_section')?.classList.toggle('hidden', isTeamMode);
+            
+            // 선생님 연락처 업데이트
+            updateTeacherContactDisplay();
+        });
+    });
+    
+    // 페이지 로드 시 초기 표시
+    setTimeout(updateTeacherContactDisplay, 300);
+});
