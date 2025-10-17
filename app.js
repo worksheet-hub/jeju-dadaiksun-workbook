@@ -952,7 +952,7 @@ function updateTeacherContactDisplay() {
     listDiv.innerHTML = teachers.map((teacher, index) => `
         <div class="flex items-center justify-between bg-slate-700 p-4 rounded-lg hover:bg-slate-600 transition-colors">
             <div class="flex items-center space-x-4">
-                <span class="text-3xl">${index === 0 ? '👨\u200d🏫' : '👩\u200d🏫'}</span>
+                <span class="text-3xl">${index === 0 ? '👨‍🏫' : '👩‍🏫'}</span>
                 <div>
                     <p class="font-bold text-white text-lg">${teacher.name} 선생님</p>
                     <p class="text-gray-300 text-sm">${teacher.phone}</p>
