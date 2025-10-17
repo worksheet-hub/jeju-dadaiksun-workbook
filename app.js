@@ -172,6 +172,54 @@ function loadAllData() {
     }
 }
 
+// 이미지 리사이징 함수 (용량 최적화) - 선택적 사용
+// keepOriginal = true: 원본 유지 (해상도 손실 없음)
+// keepOriginal = false: 최적화 (용량 절감)
+function resizeImage(file, maxWidth = 2400, maxHeight = 2400, quality = 0.92, keepOriginal = true) {
+    return new Promise((resolve) => {
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            const img = new Image();
+            img.onload = function() {
+                // 원본 유지 옵션이 활성화되어 있으면 원본 그대로 반환
+                if (keepOriginal) {
+                    resolve(e.target.result);
+                    return;
+                }
+                
+                const canvas = document.createElement('canvas');
+                let width = img.width;
+                let height = img.height;
+                
+                // 비율 유지하면서 리사이징 (큰 사이즈로 변경)
+                if (width > height) {
+                    if (width > maxWidth) {
+                        height = height * (maxWidth / width);
+                        width = maxWidth;
+                    }
+                } else {
+                    if (height > maxHeight) {
+                        width = width * (maxHeight / height);
+                        height = maxHeight;
+                    }
+                }
+                
+                canvas.width = width;
+                canvas.height = height;
+                
+                const ctx = canvas.getContext('2d');
+                ctx.drawImage(img, 0, 0, width, height);
+                
+                // 고품질로 변환 (JPEG 92%)
+                const resizedDataUrl = canvas.toDataURL('image/jpeg', quality);
+                resolve(resizedDataUrl);
+            };
+            img.src = e.target.result;
+        };
+        reader.readAsDataURL(file);
+    });
+}
+
 // 사진 미리보기 설정
 function setupPhotoPreview() {
     const photoInputs = [
@@ -188,18 +236,24 @@ function setupPhotoPreview() {
         const previewEl = document.getElementById(preview);
         
         if (inputEl && previewEl) {
-            inputEl.addEventListener('change', function(e) {
+            inputEl.addEventListener('change', async function(e) {
                 const file = e.target.files[0];
                 if (file) {
-                    const reader = new FileReader();
-                    reader.onload = function(e) {
-                        previewEl.src = e.target.result;
-                        previewEl.style.display = 'block';
-                        
-                        // Base64 이미지 저장
-                        localStorage.setItem(input, e.target.result);
-                    };
-                    reader.readAsDataURL(file);
+                    // 원본 이미지 저장 (해상도 손실 없음, keepOriginal=true)
+                    const originalImage = await resizeImage(file, 2400, 2400, 0.92, true);
+                    
+                    // 미리보기 표시
+                    previewEl.src = originalImage;
+                    previewEl.style.display = 'block';
+                    
+                    // 원본 이미지 저장
+                    localStorage.setItem(input, originalImage);
+                    
+                    // 저장 정보 표시
+                    const fileSize = (file.size / 1024).toFixed(0);
+                    const savedSize = (originalImage.length * 0.75 / 1024).toFixed(0);
+                    console.log(`📸 원본 이미지 저장: ${fileSize}KB (해상도 유지)`);
+                    showNotification(`✅ 원본 품질로 저장되었습니다! (${fileSize}KB)`, 'success');
                 }
             });
             
@@ -482,6 +536,62 @@ function collectDayData(day) {
     return data;
 }
 
+// 사진 갤러리 레이아웃 생성 (사진 개수에 따라 다르게)
+function getPhotoGalleryLayout(photos, primaryColor) {
+    const photoCount = photos.length;
+    
+    if (photoCount === 1) {
+        // 1장: 큰 사이즈로 중앙 배치 (원본 비율 완벽 유지)
+        return `
+            <div style="display: flex; justify-content: center;">
+                <div style="position: relative; border-radius: 20px; overflow: hidden; box-shadow: 0 8px 20px rgba(0,0,0,0.15); background: #f8fafc; max-width: 100%; max-height: 700px; display: flex; align-items: center; justify-content: center;">
+                    <img src="${photos[0]}" style="max-width: 100%; max-height: 700px; width: auto; height: auto; object-fit: contain;" onerror="this.style.display='none'">
+                </div>
+            </div>
+        `;
+    } else if (photoCount === 2) {
+        // 2장: 나란히 배치 (각각 원본 비율 유지)
+        return `
+            <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 15px; align-items: start;">
+                ${photos.map(photo => `
+                    <div style="position: relative; border-radius: 20px; overflow: hidden; box-shadow: 0 5px 15px rgba(0,0,0,0.15); background: #f8fafc; display: flex; align-items: center; justify-content: center; min-height: 250px; max-height: 400px;">
+                        <img src="${photo}" style="max-width: 100%; max-height: 400px; width: auto; height: auto; object-fit: contain;" onerror="this.style.display='none'">
+                    </div>
+                `).join('')}
+            </div>
+        `;
+    } else if (photoCount === 3) {
+        // 3장: 위 2개, 아래 1개 (크게) - 원본 비율 유지
+        return `
+            <div style="display: flex; flex-direction: column; gap: 15px;">
+                <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 15px; align-items: start;">
+                    ${photos.slice(0, 2).map(photo => `
+                        <div style="position: relative; border-radius: 20px; overflow: hidden; box-shadow: 0 5px 15px rgba(0,0,0,0.15); background: #f8fafc; display: flex; align-items: center; justify-content: center; min-height: 200px; max-height: 320px;">
+                            <img src="${photo}" style="max-width: 100%; max-height: 320px; width: auto; height: auto; object-fit: contain;" onerror="this.style.display='none'">
+                        </div>
+                    `).join('')}
+                </div>
+                <div style="display: flex; justify-content: center;">
+                    <div style="position: relative; border-radius: 20px; overflow: hidden; box-shadow: 0 5px 15px rgba(0,0,0,0.15); background: #f8fafc; width: 65%; display: flex; align-items: center; justify-content: center; min-height: 250px; max-height: 450px;">
+                        <img src="${photos[2]}" style="max-width: 100%; max-height: 450px; width: auto; height: auto; object-fit: contain;" onerror="this.style.display='none'">
+                    </div>
+                </div>
+            </div>
+        `;
+    } else {
+        // 4장 이상: 2x2 그리드 (원본 비율 유지)
+        return `
+            <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 15px; align-items: start;">
+                ${photos.slice(0, 4).map(photo => `
+                    <div style="position: relative; border-radius: 20px; overflow: hidden; box-shadow: 0 5px 15px rgba(0,0,0,0.15); background: #f8fafc; display: flex; align-items: center; justify-content: center; min-height: 200px; max-height: 350px;">
+                        <img src="${photo}" style="max-width: 100%; max-height: 350px; width: auto; height: auto; object-fit: contain;" onerror="this.style.display='none'">
+                    </div>
+                `).join('')}
+            </div>
+        `;
+    }
+}
+
 // SNS 템플릿 생성 - 개선된 버전
 function createSNSTemplate(day, data, studentInfo) {
     const dayColors = {
@@ -552,15 +662,9 @@ function createSNSTemplate(day, data, studentInfo) {
             ${photos.length > 0 ? `
             <div style="background: rgba(255,255,255,0.95); border-radius: 30px; padding: 30px; margin-bottom: 25px; box-shadow: 0 10px 30px rgba(0,0,0,0.1);">
                 <h3 style="font-size: 28px; color: ${color.primary}; margin-bottom: 20px; font-weight: bold;">
-                    📸 오늘의 순간들
+                    📸 오늘의 순간들 (${photos.length}장)
                 </h3>
-                <div style="display: grid; grid-template-columns: ${photos.length === 1 ? '1fr' : 'repeat(2, 1fr)'}; gap: 15px;">
-                    ${photos.slice(0, 4).map((photo, index) => `
-                        <div style="position: relative; border-radius: 20px; overflow: hidden; box-shadow: 0 5px 15px rgba(0,0,0,0.2); ${photos.length === 1 ? 'grid-column: span 2;' : ''}">
-                            <img src="${photo}" style="width: 100%; height: ${photos.length === 1 ? '400px' : '220px'}; object-fit: cover;" onerror="this.style.display='none'">
-                        </div>
-                    `).join('')}
-                </div>
+                ${getPhotoGalleryLayout(photos, color.primary)}
             </div>
             ` : ''}
             
@@ -848,7 +952,7 @@ function updateTeacherContactDisplay() {
     listDiv.innerHTML = teachers.map((teacher, index) => `
         <div class="flex items-center justify-between bg-slate-700 p-4 rounded-lg hover:bg-slate-600 transition-colors">
             <div class="flex items-center space-x-4">
-                <span class="text-3xl">${index === 0 ? '👨‍🏫' : '👩‍🏫'}</span>
+                <span class="text-3xl">${index === 0 ? '👨\u200d🏫' : '👩\u200d🏫'}</span>
                 <div>
                     <p class="font-bold text-white text-lg">${teacher.name} 선생님</p>
                     <p class="text-gray-300 text-sm">${teacher.phone}</p>
