@@ -470,7 +470,6 @@ async function generateDailyImage(day) {
         });
         
         // 모바일에서는 JPEG로, PC에서는 PNG로
-        const isMobile = isMobileDevice();
         const imageFormat = isMobile ? 'image/jpeg' : 'image/png';
         const imageQuality = isMobile ? 0.85 : 0.95;
         const fileExtension = isMobile ? 'jpg' : 'png';
