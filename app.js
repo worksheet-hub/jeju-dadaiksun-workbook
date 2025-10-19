@@ -228,6 +228,11 @@ function resizeImage(file, maxWidth = 2400, maxHeight = 2400, quality = 0.92, ke
     });
 }
 
+// 모바일 감지 함수
+function isMobileDevice() {
+    return /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+}
+
 // 사진 미리보기 설정
 function setupPhotoPreview() {
     const photoInputs = [
@@ -247,21 +252,33 @@ function setupPhotoPreview() {
             inputEl.addEventListener('change', async function(e) {
                 const file = e.target.files[0];
                 if (file) {
-                    // 원본 이미지 저장 (해상도 손실 없음, keepOriginal=true)
-                    const originalImage = await resizeImage(file, 2400, 2400, 0.92, true);
+                    // 모바일 감지: 모바일이면 리사이징, PC면 원본 유지
+                    const isMobile = isMobileDevice();
+                    const maxSize = isMobile ? 1600 : 2400;  // 모바일은 1600px로 제한
+                    const quality = isMobile ? 0.85 : 0.92;  // 모바일은 품질 약간 낮춤
+                    const keepOriginal = !isMobile;  // PC만 원본 유지
+                    
+                    console.log(`📱 디바이스: ${isMobile ? '모바일' : 'PC'}, 최대크기: ${maxSize}px, 품질: ${quality}`);
+                    
+                    const processedImage = await resizeImage(file, maxSize, maxSize, quality, keepOriginal);
                     
                     // 미리보기 표시
-                    previewEl.src = originalImage;
+                    previewEl.src = processedImage;
                     previewEl.style.display = 'block';
                     
-                    // 원본 이미지 저장
-                    localStorage.setItem(input, originalImage);
+                    // 이미지 저장
+                    localStorage.setItem(input, processedImage);
                     
                     // 저장 정보 표시
                     const fileSize = (file.size / 1024).toFixed(0);
-                    const savedSize = (originalImage.length * 0.75 / 1024).toFixed(0);
-                    console.log(`📸 원본 이미지 저장: ${fileSize}KB (해상도 유지)`);
-                    showNotification(`✅ 원본 품질로 저장되었습니다! (${fileSize}KB)`, 'success');
+                    const savedSize = (processedImage.length * 0.75 / 1024).toFixed(0);
+                    console.log(`📸 이미지 저장: 원본 ${fileSize}KB → 저장 ${savedSize}KB`);
+                    
+                    if (isMobile) {
+                        showNotification(`✅ 모바일 최적화로 저장되었습니다! (${savedSize}KB)`, 'success');
+                    } else {
+                        showNotification(`✅ 원본 품질로 저장되었습니다! (${savedSize}KB)`, 'success');
+                    }
                 }
             });
             
@@ -426,32 +443,44 @@ async function generateDailyImage(day) {
             throw new Error('렌더링할 요소를 찾을 수 없습니다.');
         }
         
-        // 이미지 생성 - 수정된 옵션
+        // 모바일 최적화 설정
+        const isMobile = isMobileDevice();
+        const canvasScale = isMobile ? 1 : 2;  // 모바일은 scale 1로 낮춤
+        const canvasWidth = 1080;
+        const canvasHeight = 1920;
+        
+        console.log(`📱 렌더링 설정: scale=${canvasScale}, 디바이스=${isMobile ? '모바일' : 'PC'}`);
+        
+        // 이미지 생성 - 모바일 최적화 옵션
         const canvas = await html2canvas(targetElement, {
-            scale: 2,
+            scale: canvasScale,  // 모바일은 1, PC는 2
             backgroundColor: '#ffffff',
-            logging: true,
-            useCORS: false,  // base64 이미지는 CORS 불필요
-            allowTaint: true,  // base64 이미지 허용
-            width: 1080,
-            height: 1920,
-            windowWidth: 1080,
-            windowHeight: 1920,
-            imageTimeout: 30000,  // 타임아웃 증가
+            logging: false,  // 모바일에서는 로깅 끄기
+            useCORS: false,
+            allowTaint: true,
+            width: canvasWidth,
+            height: canvasHeight,
+            windowWidth: canvasWidth,
+            windowHeight: canvasHeight,
+            imageTimeout: isMobile ? 15000 : 30000,  // 모바일은 15초
             onclone: (clonedDoc) => {
                 const clonedImages = clonedDoc.querySelectorAll('img');
                 console.log(`클론된 이미지 수: ${clonedImages.length}`);
-                // 각 이미지의 로드 상태 확인
-                clonedImages.forEach((img, idx) => {
-                    console.log(`이미지 ${idx + 1}: src 길이=${img.src?.length || 0}, complete=${img.complete}`);
-                });
             }
         });
         
+        // 모바일에서는 JPEG로, PC에서는 PNG로
+        const isMobile = isMobileDevice();
+        const imageFormat = isMobile ? 'image/jpeg' : 'image/png';
+        const imageQuality = isMobile ? 0.85 : 0.95;
+        const fileExtension = isMobile ? 'jpg' : 'png';
+        
+        console.log(`💾 이미지 포맷: ${imageFormat}, 품질: ${imageQuality}`);
+        
         // 이미지를 Data URL로 변환하여 모달 표시
-        const imageDataUrl = canvas.toDataURL('image/png', 0.95);
+        const imageDataUrl = canvas.toDataURL(imageFormat, imageQuality);
         const safeName = studentName.replace(/[^a-zA-Z0-9가-힣]/g, '');
-        const fileName = `제주학습_${day}일차_${safeName || '학생'}.png`;
+        const fileName = `제주학습_${day}일차_${safeName || '학생'}.${fileExtension}`;
         
         // Blob도 함께 생성 (다운로드용)
         canvas.toBlob(blob => {
@@ -459,12 +488,17 @@ async function generateDailyImage(day) {
                 throw new Error('이미지 생성에 실패했습니다.');
             }
             
+            // 파일 크기 확인
+            const fileSizeMB = (blob.size / 1024 / 1024).toFixed(2);
+            console.log(`✅ 이미지 생성 완료: ${fileSizeMB}MB`);
+            
             // 이미지 모달 표시
             showImageModal(imageDataUrl, blob, fileName, day);
             
             // 성공 알림
-            showNotification(`✅ ${day}일차 이미지가 생성되었습니다!`, 'success');
-        }, 'image/png', 0.95);
+            const deviceInfo = isMobile ? '(모바일 최적화)' : '';
+            showNotification(`✅ ${day}일차 이미지가 생성되었습니다! ${deviceInfo}`, 'success');
+        }, imageFormat, imageQuality);
         
         // 임시 컨테이너 제거
         setTimeout(() => {
