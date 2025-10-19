@@ -389,21 +389,36 @@ async function generateDailyImage(day) {
         tempContainer.innerHTML = templateHTML;
         document.body.appendChild(tempContainer);
         
-        // 이미지 로드 대기
+        // 이미지 로드 대기 - 개선된 버전
         const images = tempContainer.querySelectorAll('img');
-        const imagePromises = Array.from(images).map(img => {
+        console.log(`총 이미지 수: ${images.length}`);
+        
+        const imagePromises = Array.from(images).map((img, idx) => {
             return new Promise((resolve) => {
-                if (img.complete) {
+                if (img.complete && img.naturalHeight !== 0) {
+                    console.log(`이미지 ${idx + 1}: 이미 로드됨`);
                     resolve();
                 } else {
-                    img.onload = resolve;
-                    img.onerror = resolve;
+                    img.onload = () => {
+                        console.log(`이미지 ${idx + 1}: 로드 완료`);
+                        resolve();
+                    };
+                    img.onerror = () => {
+                        console.error(`이미지 ${idx + 1}: 로드 실패`);
+                        resolve();  // 실패해도 계속 진행
+                    };
+                    // 타임아웃 설정
+                    setTimeout(() => {
+                        console.warn(`이미지 ${idx + 1}: 타임아웃`);
+                        resolve();
+                    }, 10000);
                 }
             });
         });
         
         await Promise.all(imagePromises);
-        await new Promise(resolve => setTimeout(resolve, 1000));
+        console.log('모든 이미지 로드 완료, 추가 대기 중...');
+        await new Promise(resolve => setTimeout(resolve, 2000));  // 대기 시간 증가
         
         // 렌더링할 요소 확인
         const targetElement = tempContainer.querySelector('div');
@@ -411,21 +426,25 @@ async function generateDailyImage(day) {
             throw new Error('렌더링할 요소를 찾을 수 없습니다.');
         }
         
-        // 이미지 생성
+        // 이미지 생성 - 수정된 옵션
         const canvas = await html2canvas(targetElement, {
             scale: 2,
             backgroundColor: '#ffffff',
-            logging: false,
-            useCORS: true,
-            allowTaint: true,
+            logging: true,
+            useCORS: false,  // base64 이미지는 CORS 불필요
+            allowTaint: true,  // base64 이미지 허용
             width: 1080,
             height: 1920,
             windowWidth: 1080,
             windowHeight: 1920,
-            imageTimeout: 15000,
+            imageTimeout: 30000,  // 타임아웃 증가
             onclone: (clonedDoc) => {
                 const clonedImages = clonedDoc.querySelectorAll('img');
                 console.log(`클론된 이미지 수: ${clonedImages.length}`);
+                // 각 이미지의 로드 상태 확인
+                clonedImages.forEach((img, idx) => {
+                    console.log(`이미지 ${idx + 1}: src 길이=${img.src?.length || 0}, complete=${img.complete}`);
+                });
             }
         });
         
@@ -592,6 +611,8 @@ function handleEscape(e) {
 
 // 날짜별 데이터 수집
 function collectDayData(day) {
+    console.log(`==== ${day}일차 데이터 수집 시작 ====`);
+    
     const data = {
         date: new Date().toLocaleDateString('ko-KR', { 
             year: 'numeric', 
@@ -655,12 +676,29 @@ function collectDayData(day) {
             learning: document.getElementById('exp_learning')?.value || '',
             final: document.getElementById('exp_final')?.value || ''
         };
+        
+        // 3일차 사진 수집 - 디버깅 로그 추가
+        const artePhoto = localStorage.getItem('photo_arte');
+        console.log('3일차 사진 확인:');
+        console.log('- photo_arte 존재:', artePhoto ? '있음' : '없음');
+        console.log('- photo_arte 크기:', artePhoto ? `${(artePhoto.length / 1024).toFixed(0)}KB` : '0KB');
+        
         data.photos = {
-            arte: localStorage.getItem('photo_arte')
+            arte: artePhoto
         };
         data.highlight = '미디어아트 체험';
     }
     
+    // 수집된 사진 확인
+    const photoKeys = Object.keys(data.photos || {});
+    const validPhotos = photoKeys.filter(key => data.photos[key]);
+    console.log(`수집된 사진: ${validPhotos.length}개/${photoKeys.length}개`);
+    validPhotos.forEach(key => {
+        const photo = data.photos[key];
+        console.log(`  - ${key}: ${photo ? (photo.length / 1024).toFixed(0) : 0}KB`);
+    });
+    
+    console.log(`==== ${day}일차 데이터 수집 완료 ====`);
     return data;
 }
 
@@ -668,12 +706,15 @@ function collectDayData(day) {
 function getPhotoGalleryLayout(photos, primaryColor) {
     const photoCount = photos.length;
     
+    // 이미지 로드 실패 시 대체 텍스트
+    const errorHandler = `onerror="this.parentElement.innerHTML='<div style=\"display:flex;align-items:center;justify-content:center;height:100%;color:#94a3b8;font-size:18px;\">[이미지 로드 실패]</div>'"`;
+    
     if (photoCount === 1) {
         // 1장: 큰 사이즈로 중앙 배치 (원본 비율 완벽 유지)
         return `
             <div style="display: flex; justify-content: center;">
-                <div style="position: relative; border-radius: 20px; overflow: hidden; box-shadow: 0 8px 20px rgba(0,0,0,0.15); background: #f8fafc; max-width: 100%; max-height: 700px; display: flex; align-items: center; justify-content: center;">
-                    <img src="${photos[0]}" style="max-width: 100%; max-height: 700px; width: auto; height: auto; object-fit: contain;" onerror="this.style.display='none'">
+                <div style="position: relative; border-radius: 20px; overflow: hidden; box-shadow: 0 8px 20px rgba(0,0,0,0.15); background: #f8fafc; max-width: 100%; max-height: 700px; display: flex; align-items: center; justify-content: center; min-height: 400px;">
+                    <img src="${photos[0]}" style="max-width: 100%; max-height: 700px; width: auto; height: auto; object-fit: contain;" ${errorHandler}>
                 </div>
             </div>
         `;
@@ -683,7 +724,7 @@ function getPhotoGalleryLayout(photos, primaryColor) {
             <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 15px; align-items: start;">
                 ${photos.map(photo => `
                     <div style="position: relative; border-radius: 20px; overflow: hidden; box-shadow: 0 5px 15px rgba(0,0,0,0.15); background: #f8fafc; display: flex; align-items: center; justify-content: center; min-height: 250px; max-height: 400px;">
-                        <img src="${photo}" style="max-width: 100%; max-height: 400px; width: auto; height: auto; object-fit: contain;" onerror="this.style.display='none'">
+                        <img src="${photo}" style="max-width: 100%; max-height: 400px; width: auto; height: auto; object-fit: contain;" ${errorHandler}>
                     </div>
                 `).join('')}
             </div>
@@ -695,13 +736,13 @@ function getPhotoGalleryLayout(photos, primaryColor) {
                 <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 15px; align-items: start;">
                     ${photos.slice(0, 2).map(photo => `
                         <div style="position: relative; border-radius: 20px; overflow: hidden; box-shadow: 0 5px 15px rgba(0,0,0,0.15); background: #f8fafc; display: flex; align-items: center; justify-content: center; min-height: 200px; max-height: 320px;">
-                            <img src="${photo}" style="max-width: 100%; max-height: 320px; width: auto; height: auto; object-fit: contain;" onerror="this.style.display='none'">
+                            <img src="${photo}" style="max-width: 100%; max-height: 320px; width: auto; height: auto; object-fit: contain;" ${errorHandler}>
                         </div>
                     `).join('')}
                 </div>
                 <div style="display: flex; justify-content: center;">
                     <div style="position: relative; border-radius: 20px; overflow: hidden; box-shadow: 0 5px 15px rgba(0,0,0,0.15); background: #f8fafc; width: 65%; display: flex; align-items: center; justify-content: center; min-height: 250px; max-height: 450px;">
-                        <img src="${photos[2]}" style="max-width: 100%; max-height: 450px; width: auto; height: auto; object-fit: contain;" onerror="this.style.display='none'">
+                        <img src="${photos[2]}" style="max-width: 100%; max-height: 450px; width: auto; height: auto; object-fit: contain;" ${errorHandler}>
                     </div>
                 </div>
             </div>
@@ -712,7 +753,7 @@ function getPhotoGalleryLayout(photos, primaryColor) {
             <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 15px; align-items: start;">
                 ${photos.slice(0, 4).map(photo => `
                     <div style="position: relative; border-radius: 20px; overflow: hidden; box-shadow: 0 5px 15px rgba(0,0,0,0.15); background: #f8fafc; display: flex; align-items: center; justify-content: center; min-height: 200px; max-height: 350px;">
-                        <img src="${photo}" style="max-width: 100%; max-height: 350px; width: auto; height: auto; object-fit: contain;" onerror="this.style.display='none'">
+                        <img src="${photo}" style="max-width: 100%; max-height: 350px; width: auto; height: auto; object-fit: contain;" ${errorHandler}>
                     </div>
                 `).join('')}
             </div>
